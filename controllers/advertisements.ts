@@ -11,6 +11,7 @@ import User from "../models/users";
 import InternalServerError from "../errors/internalServerError";
 import AuthorizationError from "../errors/authorizationError";
 import NotFoundError from "../errors/notFoundError";
+import BadRequestError from "../errors/badRequest";
 
 export const getPubilcAdvertisements = (
   req: Request,
@@ -27,6 +28,40 @@ export const getPubilcAdvertisements = (
     })
     .catch(err => {
       return next(new NotFoundError("The advertisement were not found."));
+    });
+};
+
+export const getUserAdvertisements = (
+  req: Request,
+  res: Response,
+  next: Function
+) => {
+  const userId = req.headers.UserId;
+  User.findById(userId)
+    .exec()
+    .then(foundUser => {
+      if (!foundUser) {
+        return next(
+          new AuthorizationError(`User with id: "${userId}" doesn't exists.`)
+        );
+      }
+
+      Advertisement.find({ creatorId: userId })
+        .exec()
+        .then(advertisements => {
+          res.status(200).send({
+            message: "My advertisements were accessed successfuly.",
+            advertisements
+          });
+        })
+        .catch(err => {
+          return next(new NotFoundError("The advertisements were not found."));
+        });
+    })
+    .catch(err => {
+      return next(
+        new InternalServerError("Problem occurs during searching the user.")
+      );
     });
 };
 
@@ -67,10 +102,14 @@ export const postAdvertisement = (
           });
         })
         .catch(err => {
-          return next(
-            new InternalServerError("Problem occurs during searching the user.")
-          );
+          // TODO: Error message should be more specific.
+          return next(new BadRequestError("Invalid advertisement."));
         });
+    })
+    .catch(err => {
+      return next(
+        new InternalServerError("Problem occurs during searching the user.")
+      );
     });
 };
 
@@ -122,40 +161,6 @@ export const deleteAdvertisement = (
                 )
               );
             });
-        });
-    })
-    .catch(err => {
-      return next(
-        new InternalServerError("Problem occurs during searching the user.")
-      );
-    });
-};
-
-export const getUserAdvertisements = (
-  req: Request,
-  res: Response,
-  next: Function
-) => {
-  const userId = req.headers.UserId;
-  User.findById(userId)
-    .exec()
-    .then(foundUser => {
-      if (!foundUser) {
-        return next(
-          new AuthorizationError(`User with id: "${userId}" doesn't exists.`)
-        );
-      }
-
-      Advertisement.find({ creatorId: userId })
-        .exec()
-        .then(advertisements => {
-          res.status(200).send({
-            message: "My advertisements were accessed successfuly.",
-            advertisements
-          });
-        })
-        .catch(err => {
-          return next(new NotFoundError("The advertisements were not found."));
         });
     })
     .catch(err => {
