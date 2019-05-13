@@ -1,12 +1,11 @@
 // External
 import express from "express";
+
 // Config
-
 import upload from "../multer";
+
 // Authorization
-
 import { jwtAuthorization } from "../../utils/jwt-auth";
-
 // Controllers
 import {
   getPubilcAdvertisements,

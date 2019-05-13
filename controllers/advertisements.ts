@@ -1,11 +1,10 @@
 // External
 import { Request, Response } from "express";
-import mongoose from "mongoose";
 import fs from "fs";
+import { ObjectId } from "mongodb";
 
-// Models
-import Advertisement from "../models/advertisements";
-import User from "../models/users";
+// DB
+import db from "../config/db";
 
 // Errors
 import InternalServerError from "../errors/internalServerError";
@@ -13,159 +12,129 @@ import AuthorizationError from "../errors/authorizationError";
 import NotFoundError from "../errors/notFoundError";
 import BadRequestError from "../errors/badRequest";
 
-export const getPubilcAdvertisements = (
+export const getPubilcAdvertisements = async (
   req: Request,
   res: Response,
   next: Function
 ) => {
-  Advertisement.find()
-    .exec()
-    .then(advertisements => {
-      res.status(200).send({
-        message: "Advertisements were accessed successfuly.",
-        advertisements
-      });
-    })
-    .catch(err => {
-      return next(new NotFoundError("The advertisement were not found."));
-    });
+  const database = await db;
+  const advertisementsCollection = database.collection("advertisements");
+  const advertisements = await advertisementsCollection.find().toArray();
+  res.status(200).send({
+    message: "Advertisements were accessed successfuly.",
+    advertisements
+  });
 };
 
-export const getUserAdvertisements = (
+export const getUserAdvertisements = async (
   req: Request,
   res: Response,
   next: Function
 ) => {
-  const userId = req.headers.UserId;
-  User.findById(userId)
-    .exec()
-    .then(foundUser => {
-      if (!foundUser) {
-        return next(
-          new AuthorizationError(`User with id: "${userId}" doesn't exists.`)
-        );
-      }
+  const { UserId } = req.headers;
+  const database = await db;
+  const usersCollection = database.collection("users");
+  const foundUser = await usersCollection.findOne(
+    new ObjectId(UserId as string)
+  );
+  if (!foundUser) {
+    return next(
+      new AuthorizationError(`User with id: "${UserId}" doesn't exists.`)
+    );
+  }
 
-      Advertisement.find({ creatorId: userId })
-        .exec()
-        .then(advertisements => {
-          res.status(200).send({
-            message: "My advertisements were accessed successfuly.",
-            advertisements
-          });
-        })
-        .catch(err => {
-          return next(new NotFoundError("The advertisements were not found."));
-        });
-    })
-    .catch(err => {
-      return next(
-        new InternalServerError("Problem occurs during searching the user.")
-      );
-    });
+  const advertisementsCollection = database.collection("advertisements");
+  const userAdvertisements = await advertisementsCollection
+    .find({ creatorId: new ObjectId(UserId as string) })
+    .toArray();
+  res.status(200).send({
+    message: "My advertisements were accessed successfuly.",
+    advertisements: userAdvertisements
+  });
 };
 
-export const postAdvertisement = (
+export const postAdvertisement = async (
   req: Request,
   res: Response,
   next: Function
 ) => {
-  const userId = req.headers.UserId;
-  User.findById(userId)
-    .exec()
-    .then(foundUser => {
-      if (!foundUser) {
-        return next(
-          new AuthorizationError(`User with id: "${userId}" doesn't exists.`)
-        );
-      }
+  const { UserId } = req.headers;
+  const database = await db;
+  const usersCollection = database.collection("users");
+  const foundUser = await usersCollection.findOne(
+    new ObjectId(UserId as string)
+  );
+  if (!foundUser) {
+    return next(
+      new AuthorizationError(`User with id: "${UserId}" doesn't exists.`)
+    );
+  }
 
-      const advertisement = new Advertisement({
-        _id: new mongoose.Types.ObjectId(),
-        title: req.body.title,
-        price: req.body.price,
-        description: req.body.description,
-        imagePath: req.file.path,
-        image: `data:image/jpeg;base64, ${fs.readFileSync(
-          req.file.path,
-          "base64"
-        )}`,
-        owner: foundUser.username,
-        creatorId: foundUser._id
-      });
-      advertisement
-        .save()
-        .then(createdAdvertisement => {
-          res.status(201).send({
-            message: "Advertisement was created successfuly.",
-            advertisement: createdAdvertisement
-          });
-        })
-        .catch(err => {
-          // TODO: Error message should be more specific.
-          return next(new BadRequestError("Invalid advertisement."));
-        });
-    })
-    .catch(err => {
-      return next(
-        new InternalServerError("Problem occurs during searching the user.")
-      );
-    });
+  const advertisementToInsert = {
+    _id: new ObjectId(),
+    title: req.body.title,
+    price: +req.body.price,
+    description: req.body.description,
+    imagePath: req.file.path,
+    image: `data:image/jpeg;base64, ${fs.readFileSync(
+      req.file.path,
+      "base64"
+    )}`,
+    owner: foundUser.username,
+    creatorId: foundUser._id
+  };
+  const advertisementsCollection = database.collection("advertisements");
+  const createdAdvertisement = await advertisementsCollection.insertOne(
+    advertisementToInsert
+  );
+  res.status(201).send({
+    message: "Advertisement was created successfuly.",
+    advertisement: createdAdvertisement
+  });
 };
 
-export const deleteAdvertisement = (
+export const deleteAdvertisement = async (
   req: Request,
   res: Response,
   next: Function
 ) => {
+  const { UserId } = req.headers;
   const advertisementId = req.params.advertisementId;
-  const userId = req.headers.UserId;
-  User.findById(userId)
-    .exec()
-    .then(foundUser => {
-      if (!foundUser) {
-        return next(
-          new AuthorizationError(`User with id: "${userId}" doesn't exists.`)
-        );
-      }
+  const database = await db;
+  const usersCollection = database.collection("users");
+  const foundUser = await usersCollection.findOne(
+    new ObjectId(UserId as string)
+  );
+  if (!foundUser) {
+    return next(
+      new AuthorizationError(`User with id: "${UserId}" doesn't exists.`)
+    );
+  }
 
-      Advertisement.findById(advertisementId)
-        .exec()
-        .then(advertisement => {
-          if (!advertisement) {
-            return next(
-              new NotFoundError(
-                `Advertisement with id "${advertisementId}" doesn't exists.`
-              )
-            );
-          }
-          fs.unlink(advertisement.imagePath, err => {
-            if (err) {
-              console.log("Failed to delete local image: " + err);
-            } else {
-              console.log("Successfully deleted local image.");
-            }
-          });
+  const advertisementsCollection = database.collection("advertisements");
+  const userAdvertisement = await advertisementsCollection.findOne(
+    new ObjectId(advertisementId)
+  );
+  if (!userAdvertisement) {
+    return next(
+      new NotFoundError(
+        `Advertisement with id "${advertisementId}" doesn't exists.`
+      )
+    );
+  }
 
-          Advertisement.deleteOne({ _id: advertisementId })
-            .exec()
-            .then(docs => {
-              res.status(200).send({
-                message: `Advertisement was deleted successfuly.`
-              });
-            })
-            .catch(err => {
-              return next(
-                new InternalServerError(
-                  "Problem occurs during deleting the advertisement."
-                )
-              );
-            });
-        });
-    })
-    .catch(err => {
-      return next(
-        new InternalServerError("Problem occurs during searching the user.")
-      );
-    });
+  fs.unlink(userAdvertisement.imagePath, err => {
+    if (err) {
+      console.log("Failed to delete local image: " + err);
+    } else {
+      console.log("Successfully deleted local image.");
+    }
+  });
+
+  await advertisementsCollection.deleteOne({
+    _id: new ObjectId(advertisementId)
+  });
+  res.status(200).send({
+    message: `Advertisement was deleted successfuly.`
+  });
 };

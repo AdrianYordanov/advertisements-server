@@ -1,8 +1,8 @@
 // External
 import { Request, Response } from "express";
-import mongoose from "mongoose";
-// Models
-import User from "../models/users";
+import { ObjectId } from "mongodb";
+// DB
+import db from "../config/db";
 // Errors
 import InternalServerError from "../errors/internalServerError";
 import AuthorizationError from "../errors/authorizationError";
@@ -16,86 +16,66 @@ import {
   bcryptComparePassword
 } from "../utils/bcrypt-hash";
 
-export const registerUser = (
+export const registerUser = async (
   req: Request,
   res: Response,
   next: (err: CustomError) => void
 ) => {
-  const inputUsername = req.body.username;
-  const inputPassword = req.body.password;
-  User.find({ username: inputUsername })
-    .exec()
-    .then(users => {
-      if (users.length > 0) {
-        return next(
-          new ConflictError(`Username "${inputUsername}" already exists.`)
-        );
-      }
+  const database = await db;
+  const usersCollection = database.collection("users");
+  const { username, password } = req.body;
+  const users = await usersCollection.find({ username }).toArray();
+  if (users.length > 0) {
+    return next(new ConflictError(`Username "${username}" already exists.`));
+  }
 
-      bcryptHashPassword(inputPassword, (err, hashedPassword) => {
-        if (err) {
-          return next(
-            new InternalServerError("Server couldn't hash the password.")
-          );
-        }
-
-        const user = new User({
-          _id: new mongoose.Types.ObjectId(),
-          username: inputUsername,
-          password: hashedPassword
-        });
-        user
-          .save()
-          .then(createdUser => {
-            res.status(201).send({
-              message: "User created successfuly.",
-              username: createdUser.username,
-              token: jwtGenerateToken(createdUser._id, hashedPassword)
-            });
-          })
-          .catch(err => {
-            return next(new InternalServerError("User wasn't created."));
-          });
-      });
-    })
-    .catch(err => {
+  bcryptHashPassword(password, async (err, hashedPassword) => {
+    if (err) {
       return next(
-        new InternalServerError("Problem occurs during searching the user.")
+        new InternalServerError("Server couldn't hash the password.")
       );
+    }
+
+    const userToBeInserted = {
+      _id: new ObjectId(),
+      username,
+      password: hashedPassword
+    };
+    await usersCollection.insertOne(userToBeInserted);
+    res.status(201).send({
+      message: "User created successfuly.",
+      username: userToBeInserted.username,
+      token: jwtGenerateToken(
+        userToBeInserted._id.toHexString(),
+        hashedPassword
+      )
     });
+  });
 };
 
-export const loginUser = (
+export const loginUser = async (
   req: Request,
   res: Response,
   next: (err: CustomError) => void
 ) => {
-  const inputUsername = req.body.username;
-  const inputPassword = req.body.password;
-  User.findOne({ username: inputUsername })
-    .exec()
-    .then(foundUser => {
-      if (!foundUser) {
-        return next(
-          new AuthorizationError(`User "${inputUsername}" doesn't exists.`)
-        );
-      }
+  const { username, password } = req.body;
+  const database = await db;
+  const usersCollection = database.collection("users");
+  const foundUser = await usersCollection.findOne({ username });
+  if (!foundUser) {
+    return next(new AuthorizationError(`User "${username}" doesn't exists.`));
+  }
 
-      if (!bcryptComparePassword(inputPassword, foundUser.password)) {
-        return next(new AuthorizationError(`Incorrect password.`));
-      }
+  console.log(foundUser);
+  if (!bcryptComparePassword(password, foundUser.password)) {
+    return next(new AuthorizationError(`Incorrect password.`));
+  }
 
-      res.status(201).send({
-        message: "User was logged successfuly.",
-        username: foundUser.username,
-        token: jwtGenerateToken(foundUser._id, foundUser.password)
-      });
-    })
-    .catch(err => {
-      return next(
-        new InternalServerError("Problem occurs during searching the user.")
-      );
-    });
+  res.status(201).send({
+    message: "User was logged successfuly.",
+    username: foundUser.username,
+    token: jwtGenerateToken(foundUser._id, foundUser.password)
+  });
 };
 
 export const checkUser = (req: Request, res: Response, next: Function) => {

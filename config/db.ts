@@ -1,20 +1,14 @@
 // External
-import mongoose from "mongoose";
+import mongo from "mongodb";
 
 // Constants
 import * as Constants from "../utils/constants";
 
-export default () => {
-  mongoose.connect(Constants.connectingString, { useNewUrlParser: true });
-  mongoose.connection
-    .once("open", err => {
-      if (err) {
-        throw err;
-      }
-
-      console.log("Database connected...");
-    })
-    .on("error", reason => {
-      console.log(reason);
-    });
-};
+export default (async () => {
+  const client = await mongo.connect(Constants.connectingString, {
+    useNewUrlParser: true
+  });
+  let db = client.db();
+  console.log("Connected to DB.");
+  return db;
+})();
