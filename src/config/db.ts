@@ -8,7 +8,7 @@ export default (async () => {
   const client = await mongo.connect(Constants.connectingString, {
     useNewUrlParser: true
   });
-  let db = client.db();
+  const db = client.db();
   console.log("Connected to DB.");
   return db;
 })();

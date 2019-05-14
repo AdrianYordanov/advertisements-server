@@ -5,7 +5,8 @@
   "main": "app.ts",
   "scripts": {
     "start": "ts-node ./src/app.ts",
-    "build": "tsc && webpack --config ./webpack.config.js"
+    "build": "tsc && webpack --config ./webpack.config.js",
+    "rules": "tslint -c tslint.json src/**/*.ts"
   },
   "author": "Adrian Yordanov",
   "license": "ISC",
@@ -28,6 +29,8 @@
   },
   "devDependencies": {
     "ts-node": "^8.0.2",
+    "tslint": "^5.16.0",
+    "tslint-config-prettier": "^1.18.0",
     "typescript": "^3.3.3",
     "webpack": "^4.31.0",
     "webpack-cli": "^3.3.2",

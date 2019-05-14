@@ -1,0 +1,14 @@
+{
+  "defaultSeverity": "warning",
+  "extends": ["tslint:recommended", "tslint-config-prettier"],
+  "jsRules": {},
+  "rules": {
+    "ordered-imports": false,
+    "no-console": false,
+    "object-literal-sort-keys": false,
+    "jsx-no-lambda": false,
+    "variable-name": ["allow-leading-underscore"],
+    "ban-types": [false]
+  },
+  "rulesDirectory": []
+}
