@@ -66,7 +66,6 @@ export const loginUser = async (
     return next(new AuthorizationError(`User "${username}" doesn't exists.`));
   }
 
-  console.log(foundUser);
   if (!bcryptComparePassword(password, foundUser.password)) {
     return next(new AuthorizationError(`Incorrect password.`));
   }

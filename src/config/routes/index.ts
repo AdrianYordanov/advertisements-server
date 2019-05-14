@@ -19,11 +19,12 @@ export default (app: { use: Function }) => {
     });
     // Route error handling.
     app.use((err: CustomError, req: Request, res: Response, next: Function) => {
+      console.log(err);
       res.status(err.statusCode).json({
         message: err.message
       });
     });
   } catch (error) {
-    console.log(error);
+    console.log(error.message);
   }
 };

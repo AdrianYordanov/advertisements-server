@@ -4,8 +4,8 @@
   "description": "",
   "main": "app.ts",
   "scripts": {
-    "build": "tsc",
-    "start": "ts-node app.ts"
+    "start": "ts-node ./src/app.ts",
+    "build": "tsc && webpack --config ./webpack.config.js"
   },
   "author": "Adrian Yordanov",
   "license": "ISC",
@@ -24,9 +24,13 @@
     "jsonwebtoken": "^8.4.0",
     "mongodb": "^3.2.4",
     "morgan": "^1.9.1",
-    "multer": "^1.4.1",
-    "ts-node": "^8.0.2",
-    "typescript": "^3.3.3"
+    "multer": "^1.4.1"
   },
-  "devDependencies": {}
+  "devDependencies": {
+    "ts-node": "^8.0.2",
+    "typescript": "^3.3.3",
+    "webpack": "^4.31.0",
+    "webpack-cli": "^3.3.2",
+    "webpack-node-externals": "^1.7.2"
+  }
 }
