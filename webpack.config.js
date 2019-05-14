@@ -8,5 +8,6 @@ module.exports = {
     path: path.resolve(__dirname, "./build"),
     filename: "bundle-back.js"
   },
-  externals: [nodeExternals()]
+  externals: [nodeExternals()],
+  watch: true
 };
